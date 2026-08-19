@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- We will use UglyToad.PdfPig for PDF parsing, and Azure.AI.OpenAI for AI extraction -->
+    <PackageReference Include="UglyToad.PdfPig" Version="0.1.8" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.13" />
+  </ItemGroup>
+
+</Project>
