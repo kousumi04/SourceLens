@@ -1,0 +1,15 @@
+// Add these lines to Program.cs, before builder.Build():
+
+using SourceLensAPI.Interfaces;
+using SourceLensAPI.Services;
+
+builder.Services.AddScoped<INumberExtractionService, NumberExtractionService>();
+builder.Services.AddScoped<ICalculationEngine, CalculationEngine>();
+builder.Services.AddScoped<IComparisonService, ComparisonService>();
+builder.Services.AddScoped<IClaimAssessmentRepository, ClaimAssessmentRepository>();
+builder.Services.AddScoped<INumericVerificationService, NumericVerificationService>();
+
+// Swap this for the real implementation once the Evidence/RAG teammate's module is ready.
+// It only needs to satisfy IEvidenceRagService — nothing else in this module changes.
+builder.Services.AddScoped<IEvidenceRagService, NullEvidenceRagService>();
+// builder.Services.AddScoped<IEvidenceRagService, EvidenceRagService>();
