@@ -1,0 +1,90 @@
+@SourceLensAPI_HostAddress = https://localhost:7280
+
+### CREATE USER — run only once
+POST {{SourceLensAPI_HostAddress}}/api/Users
+Content-Type: application/json
+
+{
+    "name": "Test User",
+    "email": "test@sourcelens.com",
+    "password": "Test123",
+    "role": "Researcher"
+}
+
+### CREATE PAPER — run only once
+POST {{SourceLensAPI_HostAddress}}/api/Papers
+Content-Type: application/json
+
+{
+    "userId": 1,
+    "title": "Test Research Paper",
+    "fileName": "test-paper.pdf",
+    "uploadDate": "2026-08-18T20:00:00",
+    "status": "Uploaded"
+}
+
+### CREATE CLAIM — run only once
+POST {{SourceLensAPI_HostAddress}}/api/Claims
+Content-Type: application/json
+
+{
+    "paperId": 1,
+    "claimText": "The proposed method improves research accuracy by 20 percent.",
+    "pageNumber": 2
+}
+
+### GET CLAIMS FOR PAPER
+GET {{SourceLensAPI_HostAddress}}/api/Papers/1/claims
+
+### CREATE SOURCE — run only once
+POST {{SourceLensAPI_HostAddress}}/api/Sources
+Content-Type: application/json
+
+{
+    "title": "Test Research Source",
+    "authors": "John Doe",
+    "publicationYear": 2025,
+    "doi": "10.1234/test.2025",
+    "sourceType": "Journal"
+}
+
+### GET SOURCES
+GET {{SourceLensAPI_HostAddress}}/api/Sources
+
+### CREATE EVIDENCE — run only once
+POST {{SourceLensAPI_HostAddress}}/api/Evidence
+Content-Type: application/json
+
+{
+    "sourceId": 1,
+    "evidenceText": "The study reported a 20 percent improvement in accuracy.",
+    "pageNumber": 5
+}
+
+### GET EVIDENCE
+GET {{SourceLensAPI_HostAddress}}/api/Evidence
+
+### CREATE CLAIM ASSESSMENT — run only once
+POST {{SourceLensAPI_HostAddress}}/api/ClaimAssessments
+Content-Type: application/json
+
+{
+    "claimId": 1,
+    "evidenceId": 1,
+    "verdict": "Supported",
+    "confidenceScore": 0.92,
+    "explanation": "The evidence directly supports the claim."
+}
+
+### DELETE DUPLICATE CLAIMS
+DELETE {{SourceLensAPI_HostAddress}}/api/Claims/2
+
+###
+DELETE {{SourceLensAPI_HostAddress}}/api/Claims/3
+
+###
+DELETE {{SourceLensAPI_HostAddress}}/api/Claims/4
+###
+DELETE {{SourceLensAPI_HostAddress}}/api/Claims/5
+### VERIFY CLAIMS
+GET {{SourceLensAPI_HostAddress}}/api/Claims
