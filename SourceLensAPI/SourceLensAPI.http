@@ -88,3 +88,28 @@ DELETE {{SourceLensAPI_HostAddress}}/api/Claims/4
 DELETE {{SourceLensAPI_HostAddress}}/api/Claims/5
 ### VERIFY CLAIMS
 GET {{SourceLensAPI_HostAddress}}/api/Claims
+
+### RAG EVIDENCE RETRIEVAL — Fetch & search cited paper for a claim
+POST {{SourceLensAPI_HostAddress}}/api/Evidence/retrieve
+Content-Type: application/json
+
+{
+    "claimId": 1,
+    "claimText": "The proposed method improves research accuracy by 20 percent.",
+    "citedPaperTitle": "Deep Learning Methods in Research Paper Verification",
+    "citedPaperDoi": "10.1016/j.artint.2024.103980",
+    "topK": 3,
+    "minSimilarityThreshold": 0.45,
+    "autoSaveToDatabase": true
+}
+
+### RAG EVIDENCE RETRIEVAL — Direct Claim Search against Academic Sources
+POST {{SourceLensAPI_HostAddress}}/api/Evidence/retrieve
+Content-Type: application/json
+
+{
+    "claimText": "Transformer attention mechanisms reduce factual hallucination in scientific summaries.",
+    "topK": 2,
+    "minSimilarityThreshold": 0.40,
+    "autoSaveToDatabase": false
+}

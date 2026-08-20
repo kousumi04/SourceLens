@@ -1,3 +1,5 @@
 <Solution>
-  <Project Path="SourceLensAPI.csproj" />
+  <Project Path="SourceLensAPI/SourceLensAPI.csproj" />
+  <Project Path="SourceLens.ClaimExtraction/SourceLens.ClaimExtraction.csproj" />
+  <Project Path="SourceLens.EvidenceRetrieval/SourceLens.EvidenceRetrieval.csproj" />
 </Solution>

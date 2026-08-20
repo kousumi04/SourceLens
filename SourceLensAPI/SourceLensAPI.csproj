@@ -19,4 +19,9 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SourceLens.EvidenceRetrieval\SourceLens.EvidenceRetrieval.csproj" />
+    <ProjectReference Include="..\SourceLens.ClaimExtraction\SourceLens.ClaimExtraction.csproj" />
+  </ItemGroup>
+
 </Project>
