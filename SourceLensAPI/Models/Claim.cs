@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace SourceLensAPI.Models;
 
@@ -17,5 +18,6 @@ public partial class Claim
 
     public virtual ICollection<ClaimAssessment> ClaimAssessments { get; set; } = new List<ClaimAssessment>();
 
+    [JsonIgnore]
     public virtual ResearchPaper? Paper { get; set; }
 }
