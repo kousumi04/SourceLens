@@ -21,4 +21,9 @@
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.20" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SourceLens.EvidenceRetrieval\SourceLens.EvidenceRetrieval.csproj" />
+    <ProjectReference Include="..\SourceLens.ClaimExtraction\SourceLens.ClaimExtraction.csproj" />
+  </ItemGroup>
+
 </Project>

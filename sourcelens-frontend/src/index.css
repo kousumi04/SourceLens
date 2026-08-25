@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* --- SourceLens design tokens --- */
+
+  /* Structure */
+  --color-ink: #1c2541;
+  --color-ink-2: #232d4f;
+  --color-ink-muted: #6b7280;
+  --color-ink-soft: #8b93a8;
+
+  /* Surfaces */
+  --color-paper: #f1efea;
+  --color-paper-raised: #ffffff;
+  --color-hairline: #dcd8cc;
+  --color-hairline-dark: #33406b;
+
+  /* Brand / signature accent (brass lens ring) */
+  --color-lens: #b8933e;
+  --color-lens-soft: #e9dcb8;
+  --color-lens-deep: #8a6b25;
+
+  /* Verdict semantics */
+  --color-support: #2f6f4e;
+  --color-support-soft: #e1ede5;
+  --color-refute: #9c4a3a;
+  --color-refute-soft: #f1e2de;
+  --color-pending: #b98a2e;
+  --color-pending-soft: #f3e7ce;
+
+  --font-display: "Source Serif 4", Georgia, serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-lens-soft);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-lens);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-hairline); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes aperture-spin {
+  to { transform: rotate(360deg); }
+}
+.animate-aperture {
+  animation: aperture-spin 1.4s linear infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s ease-out both;
+}

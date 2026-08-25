@@ -6,6 +6,16 @@
 # dotenv files
 .env
 
+# Frontend dependencies and build output
+**/node_modules/
+**/dist/
+
+# Local Python environment and caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
 # User-specific files
 *.rsuser
 *.suo
