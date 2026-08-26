@@ -2,6 +2,24 @@ using Microsoft.EntityFrameworkCore;
 using SourceLensAPI.Models;
 using Scalar.AspNetCore;
 
+// Load the developer .env file when running from the repository (never commit this file).
+var dotenvPaths = new[]
+{
+    Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+    Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? "", ".env"),
+    Path.Combine(Directory.GetParent(Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? "")?.FullName ?? "", ".env")
+};
+var dotenvPath = dotenvPaths.FirstOrDefault(File.Exists);
+if (dotenvPath is not null)
+{
+    foreach (var line in File.ReadLines(dotenvPath))
+    {
+        var parts = line.Split('=', 2);
+        if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[0]) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable(parts[0])))
+            Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim().Trim('"'));
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Connect Entity Framework Core to SQL Server
@@ -23,6 +41,9 @@ builder.Services.AddScoped<SourceLens.EvidenceRetrieval.Workflow.EvidenceRetriev
 
 // Add services to the container
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
 // Add OpenAPI
 builder.Services.AddOpenApi();
@@ -36,7 +57,9 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+app.UseCors();
 
 app.UseAuthorization();
 

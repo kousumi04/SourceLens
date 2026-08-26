@@ -3,8 +3,12 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# dotenv files
+# dotenv files: keep real credentials and local overrides out of git,
+# but allow safe templates to be committed.
 .env
+.env.*
+!.env.example
+!.env.*.example
 
 # Frontend dependencies and build output
 **/node_modules/

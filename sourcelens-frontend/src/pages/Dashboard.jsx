@@ -5,6 +5,8 @@ import VerdictBadge from "../components/VerdictBadge";
 import ConfidenceDial from "../components/ConfidenceDial";
 import DemoBanner from "../components/DemoBanner";
 import { useResource } from "../hooks/useResource";
+import { api } from "../api/client";
+import { useState } from "react";
 import {
   mockPapers,
   mockClaims,
@@ -19,6 +21,9 @@ const VERDICT_COLORS = {
 };
 
 export default function Dashboard() {
+  const [summary, setSummary] = useState("");
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
   const papers = useResource("Papers", mockPapers);
   const claims = useResource("Claims", mockClaims);
   const evidence = useResource("Evidence", mockEvidence);
@@ -46,9 +51,28 @@ export default function Dashboard() {
 
   const recentAssessments = [...assessments.data].slice(-4).reverse();
 
+  async function summarizeDashboard() {
+    setSummarizing(true); setSummaryError("");
+    try {
+      const result = await api.post("/dashboard/summary", {
+        papers: papers.data.length, claims: claims.data.length, evidenceLinked: evidence.data.length,
+        assessedClaims: totalAssessed, averageConfidence: avgConfidence,
+        verdictDistribution: verdictCounts,
+        recentClaims: recentAssessments.map((a) => ({ claim: claimById[a.claimId]?.text, verdict: a.verdict, confidence: a.confidence }))
+      });
+      setSummary(result.data.summary || "No summary was returned.");
+    } catch (error) { setSummaryError(error.response?.data?.detail || "Could not create the summary. Check the backend and Groq key."); }
+    finally { setSummarizing(false); }
+  }
+
   return (
     <div className="animate-fade-up">
-      <Topbar eyebrow="Overview" title="Dashboard" />
+      <Topbar eyebrow="Overview" title="Dashboard">
+        <button onClick={summarizeDashboard} disabled={summarizing} className="rounded-md bg-ink px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-ink-2 disabled:cursor-wait disabled:opacity-60">
+          {summarizing ? "Summarizing…" : "Summarize with AI"}
+        </button>
+      </Topbar>
+      {(summary || summaryError) && <div className="mb-5 rounded-lg border border-lens-soft bg-lens-soft/40 px-4 py-3 text-sm leading-relaxed text-ink"><p className="mb-1 text-xs font-semibold uppercase tracking-wide text-lens-deep">AI summary</p>{summary || summaryError}</div>}
       {anyDemo && <DemoBanner />}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
