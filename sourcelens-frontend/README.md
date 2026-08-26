@@ -67,13 +67,74 @@ The dashboard calls these endpoints (matching your controllers):
 | Sources            | `GET/POST /api/Sources`, `PUT/DELETE /api/Sources/{id}` |
 | Evidence           | `GET/POST /api/Evidence`, `PUT/DELETE /api/Evidence/{id}` |
 | Claim Assessments  | `GET/POST /api/ClaimAssessments`, `PUT/DELETE /api/ClaimAssessments/{id}` |
+| AI Assistant       | `POST /api/assistant/chat` |
 
 If your route names or casing differ, adjust the `endpoint` string passed to
 `useResource(...)` at the top of each file in `src/pages/`.
 
 ---
 
-## 3. Deploy it — getting it online
+## 3. AI Assistant integration
+
+The `Assistant` page adds a Groq-powered research-paper assistant to the
+dashboard. Users select an uploaded paper, ask a question, and the frontend
+sends the selected paper context to the ASP.NET Core backend.
+
+The assistant is grounded on SourceLens data for the selected paper:
+
+- paper metadata
+- extracted claims
+- linked evidence
+- claim assessments
+- verdicts and confidence scores
+- source details
+
+The frontend calls:
+
+```http
+POST /api/assistant/chat
+```
+
+with a payload like:
+
+```json
+{
+  "message": "What does the paper conclude?",
+  "paperId": 1,
+  "context": {
+    "paper": {},
+    "claims": [],
+    "evidence": [],
+    "assessments": [],
+    "sources": []
+  }
+}
+```
+
+The backend uses your configured Groq model and API key:
+
+```powershell
+$env:GROQ_API_KEY="your_groq_api_key"
+$env:GROQ_MODEL="openai/gpt-oss-120b"
+dotnet run --project ..\SourceLensAPI\SourceLensAPI.csproj --launch-profile http
+```
+
+If `GROQ_MODEL` is not set, the backend falls back to
+`openai/gpt-oss-120b`.
+
+The assistant expects normal plain-text answers. The backend prompt asks Groq
+not to return Markdown formatting, and the frontend also strips common Markdown
+markers before displaying responses.
+
+Important: the current frontend can ground answers on metadata, claims,
+evidence, assessments, and sources. If you want the assistant to answer from
+the full uploaded PDF text, the backend also needs to persist extracted paper
+text or chunks during upload/extraction and include them in the assistant
+context.
+
+---
+
+## 4. Deploy it — getting it online
 
 The frontend is a static site once built, so it can be hosted almost anywhere
 for free. Two easy options:
@@ -138,6 +199,7 @@ src/
     Sources.jsx
     Evidence.jsx
     Assessments.jsx
+    Assistant.jsx
     Users.jsx
 ```
 
