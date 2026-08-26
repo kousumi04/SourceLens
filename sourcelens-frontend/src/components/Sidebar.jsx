@@ -8,6 +8,7 @@ const NAV = [
   { to: "/sources", label: "Sources" },
   { to: "/evidence", label: "Evidence" },
   { to: "/assessments", label: "Assessments" },
+  { to: "/assistant", label: "Assistant" },
   { to: "/users", label: "Users" },
 ];
 

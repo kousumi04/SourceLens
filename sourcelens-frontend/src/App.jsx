@@ -7,6 +7,7 @@ import Sources from "./pages/Sources";
 import Evidence from "./pages/Evidence";
 import Assessments from "./pages/Assessments";
 import Users from "./pages/Users";
+import Assistant from "./pages/Assistant";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/sources" element={<Sources />} />
             <Route path="/evidence" element={<Evidence />} />
             <Route path="/assessments" element={<Assessments />} />
+            <Route path="/assistant" element={<Assistant />} />
             <Route path="/users" element={<Users />} />
           </Routes>
         </div>
