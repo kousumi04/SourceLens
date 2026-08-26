@@ -2,94 +2,191 @@ import { useState } from "react";
 import Topbar from "../components/Topbar";
 import DataTable from "../components/DataTable";
 import Modal from "../components/Modal";
-import EntityForm from "../components/EntityForm";
 import DemoBanner from "../components/DemoBanner";
 import { useResource } from "../hooks/useResource";
-import { mockPapers, mockUsers } from "../api/mockData";
-
-const EMPTY = { title: "", authors: "", year: new Date().getFullYear(), journal: "", doi: "", uploadedBy: "" };
+import { mockPapers } from "../api/mockData";
 
 export default function Papers() {
   const papers = useResource("Papers", mockPapers);
-  const users = useResource("Users", mockUsers);
+
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY);
-  const [editingId, setEditingId] = useState(null);
+  const [selectedPaper, setSelectedPaper] = useState(null);
 
-  const userById = Object.fromEntries(users.data.map((u) => [u.id, u]));
-
-  const openNew = () => {
-    setForm(EMPTY);
-    setEditingId(null);
+  const openPaper = (paper) => {
+    setSelectedPaper(paper);
     setModalOpen(true);
-  };
-  const openEdit = (row) => {
-    setForm(row);
-    setEditingId(row.id);
-    setModalOpen(true);
-  };
-  const submit = async () => {
-    if (editingId) await papers.update(editingId, form);
-    else await papers.create({ ...form, uploadedDate: new Date().toISOString().slice(0, 10) });
-    setModalOpen(false);
   };
 
   const columns = [
     {
       key: "title",
-      label: "Title",
+      label: "Paper",
       render: (r) => (
         <div>
-          <p className="font-display text-[15px] leading-snug text-ink">{r.title}</p>
-          <p className="mt-0.5 text-xs text-ink-muted">{r.authors}</p>
+          <p className="font-display text-[15px] leading-snug text-ink">
+            {r.title || "Untitled paper"}
+          </p>
+
+          <p className="mt-1 text-xs text-ink-muted">
+            {r.fileName || "No file name"}
+          </p>
         </div>
       ),
     },
-    { key: "journal", label: "Journal" },
-    { key: "year", label: "Year", mono: true },
-    { key: "doi", label: "DOI", mono: true },
-    { key: "uploadedBy", label: "Uploaded by", render: (r) => userById[r.uploadedBy]?.name || `User #${r.uploadedBy}` },
+
+    {
+      key: "status",
+      label: "Status",
+      render: (r) => (
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            r.status === "Processed"
+              ? "text-support bg-support-soft"
+              : "text-pending bg-pending-soft"
+          }`}
+        >
+          {r.status || "Unknown"}
+        </span>
+      ),
+    },
+
+    {
+      key: "claims",
+      label: "Claims",
+      render: (r) => (
+        <span className="font-mono text-sm">
+          {Array.isArray(r.claims) ? r.claims.length : 0}
+        </span>
+      ),
+    },
+
+    {
+      key: "uploadDate",
+      label: "Uploaded",
+      render: (r) => (
+        <span className="font-mono text-sm text-ink-muted">
+          {r.uploadDate
+            ? new Date(r.uploadDate).toLocaleDateString()
+            : "—"}
+        </span>
+      ),
+    },
+
+    {
+      key: "paperId",
+      label: "ID",
+      render: (r) => (
+        <span className="font-mono text-sm text-ink-muted">
+          #{r.paperId ?? r.id}
+        </span>
+      ),
+    },
   ];
 
   return (
     <div className="animate-fade-up">
       <Topbar eyebrow="Records" title="Research Papers">
-        <button onClick={openNew} className="rounded-md bg-lens px-4 py-2 text-sm font-medium text-white transition hover:bg-lens-deep">
-          + New paper
+        <button
+          onClick={() => alert("Upload papers using the backend upload API for now.")}
+          className="rounded-md bg-lens px-4 py-2 text-sm font-medium text-white transition hover:bg-lens-deep"
+        >
+          + Upload paper
         </button>
       </Topbar>
+
       {papers.isDemo && <DemoBanner />}
 
       <DataTable
         columns={columns}
         rows={papers.data}
-        onEdit={openEdit}
-        onDelete={(row) => papers.remove(row.id)}
-        onAddNew={openNew}
+        onEdit={openPaper}
+        onDelete={(row) =>
+          papers.remove(row.paperId ?? row.id)
+        }
+        onAddNew={() => alert("Upload papers using the backend upload API for now.")}
         emptyTitle="No papers uploaded yet"
         emptyBody="Upload a research paper to begin extracting claims from it."
       />
 
-      <Modal open={modalOpen} title={editingId ? "Edit paper" : "New paper"} onClose={() => setModalOpen(false)}>
-        <EntityForm
-          value={form}
-          onChange={setForm}
-          onSubmit={submit}
-          submitLabel={editingId ? "Save changes" : "Create paper"}
-          fields={[
-            { key: "title", label: "Title", required: true },
-            { key: "authors", label: "Authors", required: true },
-            { key: "journal", label: "Journal / venue" },
-            { key: "year", label: "Year", type: "number" },
-            { key: "doi", label: "DOI / URL" },
-            {
-              key: "uploadedBy",
-              label: "Uploaded by",
-              type: "select",
-              options: users.data.map((u) => ({ value: u.id, label: u.name })),
-            },
-          ]}
-        />
+      <Modal
+        open={modalOpen}
+        title={selectedPaper?.title || "Paper details"}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedPaper(null);
+        }}
+      >
+        {selectedPaper && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Paper ID
+              </p>
+              <p className="mt-1 font-mono text-sm">
+                #{selectedPaper.paperId ?? selectedPaper.id}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                File
+              </p>
+              <p className="mt-1 text-sm text-ink">
+                {selectedPaper.fileName || "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Status
+              </p>
+              <p className="mt-1 text-sm text-ink">
+                {selectedPaper.status || "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Uploaded
+              </p>
+              <p className="mt-1 text-sm text-ink">
+                {selectedPaper.uploadDate
+                  ? new Date(selectedPaper.uploadDate).toLocaleString()
+                  : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Extracted claims
+              </p>
+
+              {Array.isArray(selectedPaper.claims) &&
+              selectedPaper.claims.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {selectedPaper.claims.map((claim) => (
+                    <div
+                      key={claim.claimId}
+                      className="rounded-md border border-line bg-paper p-3"
+                    >
+                      <p className="text-sm text-ink">
+                        {claim.claimText}
+                      </p>
+
+                      <p className="mt-1 text-xs text-ink-muted">
+                        Page {claim.pageNumber}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-ink-muted">
+                  No claims available.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

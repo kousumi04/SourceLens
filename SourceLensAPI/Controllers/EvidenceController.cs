@@ -21,132 +21,256 @@ namespace SourceLensAPI.Controllers
             _retrievalOrchestrator = retrievalOrchestrator;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateEvidence(Evidence evidence)
-        {
-            _context.Evidences.Add(evidence);
-            await _context.SaveChangesAsync();
-
-            return Ok(evidence);
-        }
-
+        // GET: /api/Evidence
         [HttpGet]
         public async Task<IActionResult> GetEvidence()
         {
-            var evidence = await _context.Evidences
-                .Include(e => e.Source)
-                .ToListAsync();
+            try
+            {
+                var evidence = await _context.Evidences
+                    .Select(e => new
+                    {
+                        evidenceId = e.EvidenceId,
+                        sourceId = e.SourceId,
+                        evidenceText = e.EvidenceText,
+                        pageNumber = e.PageNumber,
 
-            return Ok(evidence);
+                        source = e.Source == null
+                            ? null
+                            : new
+                            {
+                                sourceId = e.Source.SourceId,
+                                title = e.Source.Title,
+                                authors = e.Source.Authors,
+                                publicationYear = e.Source.PublicationYear,
+                                doi = e.Source.Doi,
+                                sourceType = e.Source.SourceType
+                            }
+                    })
+                    .ToListAsync();
+
+                return Ok(evidence);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Failed to load evidence.",
+                    error = ex.Message,
+                    innerError = ex.InnerException?.Message
+                });
+            }
         }
 
+        // GET: /api/Evidence/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEvidenceById(int id)
         {
-            var evidence = await _context.Evidences
-                .Include(e => e.Source)
-                .FirstOrDefaultAsync(e => e.EvidenceId == id);
+            try
+            {
+                var evidence = await _context.Evidences
+                    .Where(e => e.EvidenceId == id)
+                    .Select(e => new
+                    {
+                        evidenceId = e.EvidenceId,
+                        sourceId = e.SourceId,
+                        evidenceText = e.EvidenceText,
+                        pageNumber = e.PageNumber,
 
-            if (evidence == null)
-                return NotFound($"Evidence with ID {id} not found.");
+                        source = e.Source == null
+                            ? null
+                            : new
+                            {
+                                sourceId = e.Source.SourceId,
+                                title = e.Source.Title,
+                                authors = e.Source.Authors,
+                                publicationYear = e.Source.PublicationYear,
+                                doi = e.Source.Doi,
+                                sourceType = e.Source.SourceType
+                            }
+                    })
+                    .FirstOrDefaultAsync();
 
-            return Ok(evidence);
+                if (evidence == null)
+                    return NotFound(new
+                    {
+                        message = $"Evidence with ID {id} not found."
+                    });
+
+                return Ok(evidence);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Failed to load evidence.",
+                    error = ex.Message,
+                    innerError = ex.InnerException?.Message
+                });
+            }
         }
 
-        /// <summary>
-        /// Executes the RAG pipeline: fetches cited paper, chunks content, runs vector similarity search,
-        /// and optionally saves top retrieved evidence directly into the database.
-        /// </summary>
-        [HttpPost("retrieve")]
-        public async Task<IActionResult> RetrieveEvidence([FromBody] EvidenceRetrievalRequestDto request)
+        // POST: /api/Evidence
+        [HttpPost]
+        public async Task<IActionResult> CreateEvidence(
+            [FromBody] Evidence evidence)
         {
-            if (string.IsNullOrWhiteSpace(request.ClaimText))
+            try
             {
-                // If claim text not provided in body, try to load from database by ClaimId
-                if (request.ClaimId > 0)
+                _context.Evidences.Add(evidence);
+                await _context.SaveChangesAsync();
+
+                return Ok(evidence);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
                 {
-                    var claim = await _context.Claims.FindAsync(request.ClaimId);
-                    if (claim != null)
+                    message = "Failed to create evidence.",
+                    error = ex.Message,
+                    innerError = ex.InnerException?.Message
+                });
+            }
+        }
+
+        // POST: /api/Evidence/retrieve
+        [HttpPost("retrieve")]
+        public async Task<IActionResult> RetrieveEvidence(
+            [FromBody] EvidenceRetrievalRequestDto request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.ClaimText))
+                {
+                    if (request.ClaimId > 0)
                     {
-                        request.ClaimText = claim.ClaimText;
+                        var claim = await _context.Claims
+                            .FindAsync(request.ClaimId);
+
+                        if (claim != null)
+                        {
+                            request.ClaimText = claim.ClaimText;
+                        }
                     }
                 }
-            }
 
-            if (string.IsNullOrWhiteSpace(request.ClaimText))
-            {
-                return BadRequest("ClaimText or a valid ClaimId must be provided.");
-            }
-
-            // If sourceId is provided but DOI/Title not specified, fetch source info from DB
-            if (request.SourceId > 0 && string.IsNullOrEmpty(request.CitedPaperTitle) && string.IsNullOrEmpty(request.CitedPaperDoi))
-            {
-                var source = await _context.Sources.FindAsync(request.SourceId);
-                if (source != null)
+                if (string.IsNullOrWhiteSpace(request.ClaimText))
                 {
-                    request.CitedPaperTitle = source.Title;
-                    request.CitedPaperDoi = source.Doi;
-                }
-            }
-
-            var query = new EvidenceSearchQuery
-            {
-                ClaimId = request.ClaimId,
-                ClaimText = request.ClaimText,
-                SourceId = request.SourceId,
-                CitedPaperTitle = request.CitedPaperTitle,
-                CitedPaperDoi = request.CitedPaperDoi,
-                TopK = request.TopK,
-                MinSimilarityThreshold = request.MinSimilarityThreshold
-            };
-
-            var retrievedResults = await _retrievalOrchestrator.ProcessAndRetrieveEvidenceAsync(query);
-
-            // Optionally persist retrieved evidence into the database
-            if (request.AutoSaveToDatabase && retrievedResults.Count > 0)
-            {
-                // Ensure a valid SourceId exists, create if needed
-                int sourceId = request.SourceId;
-                if (sourceId <= 0)
-                {
-                    var firstMatch = retrievedResults.First();
-                    var newSource = new Source
+                    return BadRequest(new
                     {
-                        Title = string.IsNullOrWhiteSpace(firstMatch.SourceTitle) ? (request.CitedPaperTitle ?? "Cited Academic Paper") : firstMatch.SourceTitle,
-                        Authors = string.IsNullOrWhiteSpace(firstMatch.SourceAuthors) ? "Academic Authors" : firstMatch.SourceAuthors,
-                        PublicationYear = firstMatch.PublicationYear ?? DateTime.UtcNow.Year,
-                        Doi = firstMatch.SourceDoi ?? request.CitedPaperDoi,
-                        SourceType = "Journal"
-                    };
+                        message =
+                            "ClaimText or a valid ClaimId must be provided."
+                    });
+                }
 
-                    _context.Sources.Add(newSource);
+                if (request.SourceId > 0 &&
+                    string.IsNullOrEmpty(request.CitedPaperTitle) &&
+                    string.IsNullOrEmpty(request.CitedPaperDoi))
+                {
+                    var source = await _context.Sources
+                        .FindAsync(request.SourceId);
+
+                    if (source != null)
+                    {
+                        request.CitedPaperTitle = source.Title;
+                        request.CitedPaperDoi = source.Doi;
+                    }
+                }
+
+                var query = new EvidenceSearchQuery
+                {
+                    ClaimId = request.ClaimId,
+                    ClaimText = request.ClaimText,
+                    SourceId = request.SourceId,
+                    CitedPaperTitle = request.CitedPaperTitle,
+                    CitedPaperDoi = request.CitedPaperDoi,
+                    TopK = request.TopK,
+                    MinSimilarityThreshold =
+                        request.MinSimilarityThreshold
+                };
+
+                var retrievedResults =
+                    await _retrievalOrchestrator
+                        .ProcessAndRetrieveEvidenceAsync(query);
+
+                if (request.AutoSaveToDatabase &&
+                    retrievedResults.Count > 0)
+                {
+                    int sourceId = request.SourceId;
+
+                    if (sourceId <= 0)
+                    {
+                        var firstMatch = retrievedResults.First();
+
+                        var newSource = new Source
+                        {
+                            Title =
+                                string.IsNullOrWhiteSpace(
+                                    firstMatch.SourceTitle)
+                                    ? (
+                                        request.CitedPaperTitle
+                                        ?? "Cited Academic Paper"
+                                      )
+                                    : firstMatch.SourceTitle,
+
+                            Authors =
+                                string.IsNullOrWhiteSpace(
+                                    firstMatch.SourceAuthors)
+                                    ? "Academic Authors"
+                                    : firstMatch.SourceAuthors,
+
+                            PublicationYear =
+                                firstMatch.PublicationYear
+                                ?? DateTime.UtcNow.Year,
+
+                            Doi =
+                                firstMatch.SourceDoi
+                                ?? request.CitedPaperDoi,
+
+                            SourceType = "Journal"
+                        };
+
+                        _context.Sources.Add(newSource);
+
+                        await _context.SaveChangesAsync();
+
+                        sourceId = newSource.SourceId;
+                    }
+
+                    foreach (var item in retrievedResults)
+                    {
+                        item.SourceId = sourceId;
+
+                        var evidenceRecord = new Evidence
+                        {
+                            SourceId = sourceId,
+                            EvidenceText = item.EvidenceText,
+                            PageNumber = item.PageNumber
+                        };
+
+                        _context.Evidences.Add(evidenceRecord);
+                    }
+
                     await _context.SaveChangesAsync();
-                    sourceId = newSource.SourceId;
                 }
 
-                foreach (var item in retrievedResults)
+                return Ok(new
                 {
-                    item.SourceId = sourceId;
-                    var evidenceRecord = new Evidence
-                    {
-                        SourceId = sourceId,
-                        EvidenceText = item.EvidenceText,
-                        PageNumber = item.PageNumber
-                    };
-
-                    _context.Evidences.Add(evidenceRecord);
-                }
-
-                await _context.SaveChangesAsync();
+                    claimText = request.ClaimText,
+                    claimId = request.ClaimId,
+                    evidenceCount = retrievedResults.Count,
+                    results = retrievedResults
+                });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                claimText = request.ClaimText,
-                claimId = request.ClaimId,
-                evidenceCount = retrievedResults.Count,
-                results = retrievedResults
-            });
+                return StatusCode(500, new
+                {
+                    message = "Evidence retrieval failed.",
+                    error = ex.Message,
+                    innerError = ex.InnerException?.Message
+                });
+            }
         }
     }
 }

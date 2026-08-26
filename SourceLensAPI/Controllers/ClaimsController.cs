@@ -15,15 +15,30 @@ namespace SourceLensAPI.Controllers
             _context = context;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateClaim(Claim claim)
+        // GET: api/Claims
+        [HttpGet]
+        public async Task<IActionResult> GetClaims()
         {
-            _context.Claims.Add(claim);
-            await _context.SaveChangesAsync();
+            var claims = await _context.Claims
+                .ToListAsync();
+
+            return Ok(claims);
+        }
+
+        // GET: api/Claims/{id}
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetClaim(int id)
+        {
+            var claim = await _context.Claims
+                .FirstOrDefaultAsync(c => c.ClaimId == id);
+
+            if (claim == null)
+                return NotFound();
 
             return Ok(claim);
         }
 
+        // GET: api/Papers/{paperId}/claims
         [HttpGet("/api/Papers/{paperId}/claims")]
         public async Task<IActionResult> GetClaimsByPaper(int paperId)
         {
@@ -33,6 +48,18 @@ namespace SourceLensAPI.Controllers
 
             return Ok(claims);
         }
+
+        // POST: api/Claims
+        [HttpPost]
+        public async Task<IActionResult> CreateClaim(Claim claim)
+        {
+            _context.Claims.Add(claim);
+            await _context.SaveChangesAsync();
+
+            return Ok(claim);
+        }
+
+        // DELETE: api/Claims/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteClaim(int id)
         {

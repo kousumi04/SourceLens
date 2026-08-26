@@ -494,3 +494,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Uploaded research papers
+SourceLensAPI/uploads/
