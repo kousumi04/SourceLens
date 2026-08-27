@@ -153,7 +153,7 @@ export default function Assistant() {
     try {
       const response = await api.post("/assistant/chat", {
         message,
-        paperId: Number(effectivePaperId) || null,
+        paperId: anyDemo ? null : Number(effectivePaperId) || null,
         context: paperContext,
       });
       setMessages((current) => [
@@ -164,7 +164,11 @@ export default function Assistant() {
       const detail =
         error.response?.data?.detail ||
         error.response?.data?.title ||
-        "Could not reach the Groq assistant endpoint. Make sure the SourceLens API is running and GROQ_API_KEY is configured.";
+        (error.code === "ECONNABORTED"
+          ? "The assistant request timed out. The API or Groq took longer than 30 seconds to respond."
+          : error.message
+            ? `Assistant request failed: ${error.message}`
+            : "Assistant request failed. Make sure the SourceLens API is running.");
       setMessages((current) => [
         ...current,
         { role: "assistant", text: detail },

@@ -13,6 +13,40 @@ public class AssistantController(
     IConfiguration configuration,
     SourceLensDbContext dbContext) : ControllerBase
 {
+    private const string AssistantSystemPrompt = """
+You are the SourceLens research-paper assistant. Use the selected paper context as your grounding: paper metadata, extracted claims, linked evidence, verdicts, confidence scores, and source details. Answer through the configured Groq model.
+
+For paper-specific questions, do not invent details that are absent from the context; say what is missing. Cite claim ids and evidence/source details when relevant.
+
+When the user asks for a paper summary, evidence summary, claim explanation, or overall assessment, return Markdown using this exact structure:
+
+**Paper:** *{paper title}* ({authors/year if available})
+
+**Core Contribution**
+{1-2 sentences describing the main contribution. If unavailable, say the context does not include it.}
+
+**Key Findings**
+
+| Claim | Summary | Evidence | Verdict |
+| --- | --- | --- | --- |
+| {claim number}. {claim text} | {short summary of what the claim says} | {specific supporting/refuting/neutral evidence and source details from context; cite claim/evidence ids} | {Supported/Refuted/Inconclusive/Needs Review} (confidence {score or unavailable}) |
+
+**Implications**
+
+- {implication grounded in the claims/evidence}
+- {implication grounded in the claims/evidence}
+
+**Overall Assessment**
+{brief synthesis of which claims are supported, refuted, or unresolved. Mention evidence gaps.}
+
+Rules:
+- Preserve the section order and headings exactly.
+- Do not add extra top-level sections.
+- Include one table row per relevant claim.
+- Use "Not available in context" instead of guessing.
+- If the question is not paper-specific, answer normally and concisely.
+""";
+
     [HttpPost("chat")]
     public async Task<IActionResult> Chat([FromBody] AssistantChatRequest request, CancellationToken cancellationToken)
     {
@@ -33,28 +67,47 @@ public class AssistantController(
         using var client = httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-        using var response = await client.PostAsJsonAsync("https://api.groq.com/openai/v1/chat/completions", new
+        HttpResponseMessage response;
+        try
         {
-            model,
-            temperature = 0.2,
-            max_tokens = 500,
-            messages = new[]
+            response = await client.PostAsJsonAsync("https://api.groq.com/openai/v1/chat/completions", new
             {
-                new
+                model,
+                temperature = 0.2,
+                max_tokens = 900,
+                messages = new[]
                 {
-                    role = "system",
-                    content = "You are the SourceLens research-paper assistant. Use the selected paper context as your grounding: paper metadata, extracted claims, linked evidence, verdicts, confidence scores, and source details. Answer through the configured Groq model. For paper-specific questions, do not invent details that are absent from the context; say what is missing. For general questions, answer normally and connect the answer to the selected paper when useful. Keep answers concise and cite claim or evidence text when relevant."
-                },
-                new
-                {
-                    role = "user",
-                    content = $"Selected research paper context JSON:\n{paperContextJson}\n\nUser question:\n{request.Message}"
+                    new
+                    {
+                        role = "system",
+                        content = AssistantSystemPrompt
+                    },
+                    new
+                    {
+                        role = "user",
+                        content = $"Selected research paper context JSON:\n{paperContextJson}\n\nUser question:\n{request.Message}"
+                    }
                 }
-            }
-        }, cancellationToken);
+            }, cancellationToken);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return Problem("Groq request timed out. Try again, or increase the backend HTTP client timeout.", statusCode: 504);
+        }
+        catch (HttpRequestException ex)
+        {
+            return Problem($"Could not reach Groq: {ex.Message}", statusCode: 502);
+        }
 
         if (!response.IsSuccessStatusCode)
-            return Problem("Groq could not answer the assistant request.", statusCode: (int)response.StatusCode);
+        {
+            var groqError = await response.Content.ReadAsStringAsync(cancellationToken);
+            return Problem(
+                string.IsNullOrWhiteSpace(groqError)
+                    ? "Groq could not answer the assistant request."
+                    : $"Groq could not answer the assistant request: {groqError}",
+                statusCode: (int)response.StatusCode);
+        }
 
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
         var answer = json.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
